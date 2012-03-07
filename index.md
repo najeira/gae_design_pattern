@@ -28,6 +28,7 @@ AppEngineの自動スケールアウトの恩恵を受けにくくなる。
 スピンアップが遅くならないようにする。
 
 importをモジュールTOPで行うと、スピンアップ時に読み込まれる:
+
     import lib_a
     import lib_b
     
@@ -40,6 +41,7 @@ importをモジュールTOPで行うと、スピンアップ時に読み込ま�
       ...
 
 importを必要になった時点で行うようにする:
+
     def foo():
       import lib_a
       # use lib_a
