@@ -1,7 +1,7 @@
 safe:        false
 auto:        true
-pygments:    true
-markdown:    maruku
+pygments:    false
+#markdown:    rdiscount
 permalink:   none
 title:       Google App Engine Design Patterns
 exclude:     [".git", ".gitignore"]
