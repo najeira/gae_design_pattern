@@ -1,6 +1,7 @@
 safe:        false
 auto:        true
-pygments:    false
+baseurl:     /gae_design_pattern/
+pygments:    true
 #markdown:    rdiscount
 permalink:   none
 title:       Google App Engine Design Patterns
