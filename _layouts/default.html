@@ -5,14 +5,14 @@
 		<title>{{ page.title }} - {{ site.title }}</title>
 		<link href="{{ site.baseurl }}assets/style.css?1" rel="stylesheet" type="text/css" />
 		<meta property="og:title" content="{{ page.title }} - {{ site.title }}" />
-		<meta property="og:url" content="{{ page.url }}" />
+		<meta property="og:url" content="{{ site.baseurl }}{{ page.url }}" />
 		<meta property="og:image" content="{{ site.baseurl }}assets/logo.png" />
 		<meta property="og:site_name" content="{{ site.title }}" />
 	</head>
 	<body>
 		<div class="navbar">
 			<h1>
-				<a class="brand" href="/">{{ site.title }}</a>
+				<a class="brand" href="{{ site.baseurl }}">{{ site.title }}</a>
 				<a href="https://github.com/najeira/gae_design_pattern" class="btn" target="_blank">Github</a>
 			</h1>
 		</div>
