@@ -1,0 +1,10 @@
+safe:        false
+auto:        true
+pygments:    true
+markdown:    maruku
+permalink:   none
+title:       Google App Engine Design Patterns
+exclude:     [".git", ".gitignore"]
+
+author:
+  name: najeira
