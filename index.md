@@ -24,10 +24,10 @@ AppEngineの自動スケールアウトの恩恵を受けにくくなる。
 スピンアップが遅くなってしまう。
 
 そこで、起動時に全てのライブラリを読み込まず、
-必要になった時点で読み込むことで、
+必要になる時点まで読み込みを行わないことで、
 スピンアップが遅くならないようにする。
 
-importをモジュールTOPで行うと、スピンアップ時に読み込まれる:
+importをモジュールレベルで行うと、スピンアップ時に読み込まれる:
 
     import lib_a
     import lib_b
@@ -64,6 +64,7 @@ importを必要になった時点で行うようにする:
 Warmup Requestsを有効にすることで、この問題を緩和することが出来る。
 
 app.yaml の inbound_services ディレクティブに設定する:
+
     inbound_services:
     - warmup
 
@@ -82,10 +83,24 @@ Warmup Requestsは`/_ah/warmup`に対して送信されるので、
 
 AppEngineは処理を行なっていないインスタンスを自動で終了する。
 
-スピンアップを回避するために、インスタンスを終了させずに
-残しておきたい場合は、Min Idle Instancesを設定する。
+インスタンスを終了させずに残しておきたい場合は、
+Min Idle Instancesを設定する。
 
-Admin Consoleから
+インスタンスが起動したまま残っていれば、
+スピンアップは発生せず高速に応答できる。
+
+設定の手順：
+
+- Admin Consoleの左側のメニュー「Administration」の
+「Application Settings」を選択する
+
+- 「Performance」の「Idle Instances」の項目の上側のつまみが
+「Min Idle Instances」、下側が「Max Idle Instances」
+
+- つまみを左に動かすと小さな値に、右に動かすと大きな値になる
+
+ここでMin Idle Instancesを1に設定すると、処理を行なっていない
+アイドル状態のインスタンスが最低1つは残されることになる。
 
 
 ## Bytecode upload
