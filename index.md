@@ -73,7 +73,7 @@ AppEngineは新しいインスタンスが必要になりそうだと判断す�
 新しいインスタンスを起動するためのリクエストを送信する。
 
 Warmup Requestsは`/_ah/warmup`に対して送信されるので、
-これを受け取るハンドラを記述し、ライブラリの読み込み等を行なっておくと良い。
+これを受け取るハンドラを記述し、ライブラリの読み込み等を行なっておく。
 
 なお、Warmup Requestsによって起動されたインスタンスも、
 通常のリクエストの場合と同様に課金対象となる。
@@ -119,18 +119,20 @@ appcfg.py の --no_precompilation を使用する。
 
 # レスポンス
 
-レスポンスはなるべく早く返す。
+レスポンスはなるべく早く返すようにする。
 
-2012年3月の時点で、AppEngineのデータセンターは
-アメリカ内にあると思われ、日本にはない。
+高速なレスポンスは第一に、ユーザにとってのサービスの価値を向上させる。
 
-このため、リクエストとレスポンスは
+また、AppEngineの自動スケールアウトの恩恵を受けるためには、
+目安として、平均応答時間が1秒以下となるようにする。
+
 
 ## Memacache
 
 AppEngineのデータストアは非常にスケーラビリティがあるが、
 最小の処理でも20ms程度の時間がかかる。
 
+Memcacheはデータストアよりも高速なので、
 キャッシュからレスポンスを返すことができれば
 データストアやその他の処理を行わないので高速になる。
 
@@ -150,13 +152,15 @@ HTTPレスポンスに含まれるヘッダによって、
 自動でFrontEnd Cacheが使われる。
 
 Cache-Control ヘッダ:
+
     Cache-Control:public, max-age=3600
 
 上記の例では、レスポンスは最大3600秒キャッシュされる。
 
 FrontEnd Cacheが有効な場合は、AppEngineのアプリケーションに
 リクエストは到達せず、その手前でレスポンスが返される。
-このため、インスタンスの処理が行われず、IHの節約にもなる。
+このため、インスタンスの処理が行われず、
+IH(インスタンス時間)の節約にもなる。
 
 さらに、FrontEnd CacheはGoogleのCDN（Contents Delivery Network）が利用され、
 リクエスト元に近い位置からの高速な応答が期待できる。
@@ -181,29 +185,45 @@ TaskQueueを使って、一部の処理をレスポンスの処理とは別に
 このように、ユーザが待たなくて良い処理はTaskQueueを使うと良い。
 
 
-
-## CDN
-
 # データストア
 
 ## モデル非正規化
 
-AppEngineのデータストアでは、RDBのSQLにおけるJOINに相当するものがない。
+AppEngineのデータストアでは、SQLにおけるJOINに相当するものがない。
 複数のモデルのデータを結合してクエリすることが出来ないため、
-あえて正規化せず（非正規化）にモデルを設計する。
+あえて正規化せずにモデルを設計する（非正規化）。
 
 例えば、人物と連絡先のデータがある場合、
-PersonとContactの2つのモデルとして定義すると、以下のようになる。
+PersonとContactの2つのモデルとして定義する例で考えてみる。
 
-class Person(ndb.Model):
-    name = ndb.StringProperty()
+正規化して設計すると以下のようになる:
 
-class Contact(ndb.Model):
-    person = ndb.KeyProperty()
-    phone = ndb.StringProperty()
-    address = ndb.StringProperty()
+    class Person(ndb.Model):
+        name = ndb.StringProperty()
 
-この時、住所 `address` からPersonを
+    class Contact(ndb.Model):
+        person = ndb.KeyProperty()
+        city = ndb.StringProperty()
+        phone = ndb.StringProperty()
+        ...
+
+この時、`city` からPersonを検索する場合は
+データストアへのアクセスが2回必要になる:
+
+    contacts = Contact.query(Contact.city == 'Tokyo').fetch(...)
+    persons = ndb.get_multi([contact.person for contact in contacts])
+
+非正規化すると以下のようになる:
+
+    class Person(ndb.Model):
+        name = ndb.StringProperty()
+        city = ndb.StringProperty()
+        phone = ndb.StringProperty()
+        ...
+
+`city` からPersonを1クエリで検索できる。
+
+    persons = Person.query(Person.city == 'Tokyo').fetch(...)
 
 
 ## Entity Group
@@ -212,33 +232,33 @@ class Contact(ndb.Model):
 
 AppEngineのデータストアで、
 1つのエンティティグループにおける更新のスループットは高くない。
-高くても10qpsほどで、目安として1qps以下となるように設計すると良い。
+良くても10qpsほどで、目安として1qps以下となるように設計すると良い。
 
 この時、更新頻度の高いカウンタのようなものを実装する時に、
 1つのエンティティで実装してしまうと、更新スループットが出せずにうまく行かない。
 
 更新頻度が高いデータは、異なるEGに属する複数のエンティティに分散するようにする。
 
-class Counter(ndb.Model):
-  count = ndb.IntegerProperty()
-
-  @classmethod
-  def incr(cls):
-    rnd = random.randint(0, 10)
-    key = ndb.Key(cls, rnd)
-    def txn():
-      obj = key.get()
-      if obj:
-        obj.count += 1
-      else:
-        obj = cls(count=1)
-      obj.put()
-    ndb.run_in_transaction(txn)
-
-  @classmethod
-  def get(cls):
-    ret = cls.query().fetch(10)
-    return sum( r.count for r in ret )
+    class Counter(ndb.Model):
+      count = ndb.IntegerProperty()
+      
+      @classmethod
+      def incr(cls):
+        rnd = random.randint(0, 10)
+        key = ndb.Key(cls, rnd)
+        def txn():
+          obj = key.get()
+          if obj:
+            obj.count += 1
+          else:
+            obj = cls(count=1)
+          obj.put()
+        ndb.run_in_transaction(txn)
+      
+      @classmethod
+      def get(cls):
+        ret = cls.query().fetch(10)
+        return sum( r.count for r in ret )
 
 上記の例では、10個のエンティティに対してランダムに更新処理が振り分けられる。
 このため、1エンティティで実装した場合よりも高い更新頻度に対応できる。
@@ -255,7 +275,14 @@ class Counter(ndb.Model):
 
 ## BASE Transaction
 
-## TaskQueue
+# TaskQueue
+
+## Idempotence
+
+## タスクチェーン
+
+## 設定
+
 
 # 課金
 
@@ -263,4 +290,13 @@ class Counter(ndb.Model):
 
 ## バージョン
 
+AppEngineでは最大10の異なるバージョンをデプロイできる。
+バージョンごとにサブドメインが割り当てられる。
+
+例えば example.appspot.com というアプリケーションの場合、
+example.appspot.com へアクセスした場合はデフォルトバージョンに
+設定されているバージョンにリクエストが飛ぶ。
+
+バージョン "test" がある場合は test.example.appspot.com へ
+アクセスすると、バージョン "test" にリクエストが飛ぶ。
 
